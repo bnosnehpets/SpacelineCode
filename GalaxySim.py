@@ -19,13 +19,13 @@ class Simulator:
     G = 1  # gravitational constant
 
     def __init__(self, masses, d, max_time, no_steps):
-        '''
+        """
         Initialises simulation
         :param masses: A list of the mass objects
         :param d: Number of Spatial Dimensions
         :param max_time: Physical time that the simulation ends
         :param no_steps: Number of time steps that the simulator uses
-        '''
+        """
         # Set up class variables
         self.max_time = max_time
         self.no_steps = no_steps
@@ -64,35 +64,35 @@ class Simulator:
     #  ANCILLARY DATA RETRIEVAL FUNCTIONS
 
     def pos(self, i, k, t):
-        '''
+        """
         Calculates single position component for single t value
         :param i: Mass index
         :param k: Cartesian index (e.g. k = 0 returns x value)
         :param t: Time-step
         :return: The position component
-        '''
+        """
         return self.solution[t, i * self.d + k]
 
     def dist(self, i, j, t):
-        '''
+        """
         Calculates distance between mass i and mass j at time t
         :param i: One mass index
         :param j: The other mass index
         :param t: Time-step
         :return: The distance between the two masses
-        '''
+        """
         square_pos = 0
         for k in range(self.d):
             square_pos += (self.pos(i, k, t) - self.pos(j, k, t)) ** 2
         return np.sqrt(square_pos)
 
     def pos_hist(self, i, k):
-        '''
+        """
         Calculates position for all t and one i
         :param i: The mass index
         :param k: Cartesian index (e.g. k = 0 returns x value)
         :return: The position component history as an array
-        '''
+        """
         hist = []
         for t in range(len(self.solution)):
             hist.append(self.pos(i, k, t))
@@ -100,23 +100,23 @@ class Simulator:
 
     # WARNING: currently only works in 2D
     def angle(self, i, j, t):
-        '''
+        """
         Calculates angle between position vectors of mass with index i and mass with index j
         :param i: One mass index
         :param j: The other mass index
         :param t: Time-step
         :return: Angle between the two position vectors
-        '''
+        """
         return np.arctan((self.pos(i, 1, t) - self.pos(j, 1, t)) / (self.pos(i, 0, t) - self.pos(j, 0, t)))
 
     def vel(self, i, k, t):
-        '''
+        """
         Calculates single velocity component for single t value
         :param i: Mass index
         :param k: Cartesian index (e.g. k = 0 returns x value)
         :param t: Time-step
         :return: The velocity component
-        '''
+        """
         return self.solution[t, self.d*(self.no_masses+i) + k]
 
     def vel_hist(self, i, k):
@@ -134,11 +134,11 @@ class Simulator:
     #  PLOTTING FUNCTIONS
 
     def animate_2d(self, title):
-        '''
+        """
         Produces an mp4 file, saved in the current directory
         :param title: The title seen in the animation video
         :return: void
-        '''
+        """
 
         def update(num, data, dot, dot1):
             half = int(self.no_masses / 2)
@@ -173,13 +173,13 @@ class Simulator:
 
     #  WARNING: Currently only works in 2D
     def plot_trajectory_2d(self, indices):
-        '''
+        """
         Plots the trajectory of all masses with index in 'indices' array
         If indices = [-1], then plots all trajectories
         Opens in window (does not save file)
         :param indices: The indices to plot
         :return: void
-        '''
+        """
         if not indices == [-1]:
             fail = False
             for i in range(len(indices)):
@@ -198,12 +198,12 @@ class Simulator:
             plt.show()
 
     def indices_to_plot(self, index, all):
-        '''
+        """
         Ancillary function. Returns list of mass indices given a single galaxy index
         :param index: Index of galaxy
         :param boolean all: True - return all indices, False - return indices with to galaxy index 'index'
         :return: Array of indices of masses with galaxy index 'index'
-        '''
+        """
         indices_to_plot = []
         for i in range(s.no_masses):
             if i != index:
@@ -215,25 +215,25 @@ class Simulator:
         return indices_to_plot
 
     def crop(self, crop):
-        '''
+        """
         Ancillary function.
         :param boolean crop: Whether or not to crop an image
         :return: '' if crop == True, 'c' if crop == False
-        '''
+        """
         r = ''
         if not crop:
             r = 'c'
         return r
 
     def plot_distances(self, index, times, all, crop):
-        '''
+        """
         Plots no. of masses within a given distance from mass with index 'index' against this distance at all times 'time'
         :param index: Index of central mass to test
         :param times: Times to make overlaying plots
         :param boolean all: True - plot for all indices, False - plot for indices with to galaxy index 'index'
         :param boolean crop: True - crop image (to pre-determined suitable size), False - do not
         :return: void
-        '''
+        """
         arr = [[] for _ in range(len(times))]
         indices_to_plot = self.indices_to_plot(index, all)
         for i in indices_to_plot:
@@ -257,7 +257,7 @@ class Simulator:
     # Plots density against distance from mass with index 'index' at all times in 'times'
     # 'resolution' is the average number of masses in each bin
     def plot_density(self, index, times, resolution, all, crop):
-        '''
+        """
         Plots number density against distance from mass at various times
         :param index: Central mass we are considering
         :param times: Times to plot the number density at
@@ -265,7 +265,7 @@ class Simulator:
         :param boolean all: True - plot for all indices, False - plot for indices with to galaxy index 'index'
         :param boolean crop: True - crop image (to pre-determined suitable size), False - do not
         :return: void
-        '''
+        """
         indices_to_plot = self.indices_to_plot(index, all)
 
         dist_divisions = []
@@ -307,14 +307,14 @@ class Simulator:
         plt.clf()
 
     def plot_distance_vs_change(self, index, t, all, crop):
-        '''
+        """
         Plots a scatter of all initial radial distances from the centre of a galaxy against their change in radial distance
         :param index: Central mass we are considering
         :param t: Time step to make plot at
         :param boolean all: True - plot for all indices, False - plot for indices with to galaxy index 'index'
         :param boolean crop: True - crop image (to pre-determined suitable size), False - do not
         :return: void
-        '''
+        """
         # work out which indices to plot depending on whether 'all' is True
         indices_to_plot = self.indices_to_plot(index, all)
 
@@ -339,14 +339,14 @@ class Simulator:
 
     # WARNING: Currently only works in 2D
     def plot_distance_vs_angle(self, index, t, all, crop):
-        '''
+        """
         Plots a scatter of all radial distances from the centre of a galaxy against their angle
         :param index: Central mass we are considering
         :param t: Time step to make plot at
         :param boolean all: True - plot for all indices, False - plot for indices with to galaxy index 'index'
         :param boolean crop: True - crop image (to pre-determined suitable size), False - do not
         :return: void
-        '''
+        """
         # work out which indices to plot depending on whether 'all' is True
         indices_to_plot = self.indices_to_plot(index, all)
 
@@ -366,13 +366,13 @@ class Simulator:
         plt.clf()
 
     def plot_within_radius(self, index, radii, all):
-        '''
+        """
         Plots number of stars within given radii as time progresses
         :param index: Central mass we are considering
         :param radii: Array of radii to consider (appear in legend)
         :param boolean all: True - plot for all indices, False - plot for indices with to galaxy index 'index'
         :return: void
-        '''
+        """
         # work out which indices to plot depending on whether 'all' is True
         indices_to_plot = self.indices_to_plot(index, all)
 
@@ -398,13 +398,13 @@ class Simulator:
         plt.clf()
 
     def captured(self, i, j, t):
-        '''
+        """
         Returns index of all 'captured' from mass with index i by mass with index j
         :param i: First mass index
         :param j: Second mass index
         :param t: Time step being considered
         :return: Index of masses closer to mass i than mass j at time 0, but closer to mass j than mass i at time t
-        '''
+        """
         r = []
         for k in range(self.no_masses):
             if k != i and k != j:
@@ -415,13 +415,13 @@ class Simulator:
     #  CORE NUMERICAL CALCULATION FUNCTIONS
 
     def f_grav(self, inp, t, ms):
-        '''
+        """
         Input function for 'odeint', takes all r_i and dr_i/dt and gives back derivatives
         :param inp: Input vector of the form: [r_0, r_1, ..., r_n, dr_0/dt, dr_1/dt, ..., dr_n/dt]
         :param t: Current time in simulation
         :param ms: Suitably shaped np array of masses (for direct operation on other arrays)
         :return: The time derivative of the input vector
-        '''
+        """
         no_masses = 2002  # Currently number of light masses must be multiple of 2000 (see report)
         dydt = np.zeros(no_masses*self.d*2)
 
@@ -451,11 +451,11 @@ class Simulator:
         return dydt
 
     def simulate(self):
-        '''
+        """
         Core simulation routine: fills in 'self.solution' with the integrated solution by calling 'odeint'
         Note that 'odeint' may be called several times due to memory restrictions
         :return: indicative run times of two parts of the code below
-        '''
+        """
 
         # move initial conditions into a vector
         s1 = time.time()
@@ -506,12 +506,12 @@ class Simulator:
     #  FUNCTIONS FOR CALCULATION OF PHYSICAL PARAMETERS
 
     def closest_approach(self, i1, i2):
-        '''
+        """
         Calculates data at the closes approach between two masses
         :param i1: First mass index
         :param i2: Second mass index
         :return: Tuple of positions and velocities at closest approach of masses with index i1 and i2
-        '''
+        """
 
         x1 = self.pos_hist(i1, 0)
         x2 = self.pos_hist(i2, 1)
@@ -530,11 +530,11 @@ class Simulator:
         return min_r, max_v
 
     def calc_ang_mom(self, t):
-        '''
+        """
         Calculates total angular momentum
         :param t: Time step to calculate it at
         :return: Angular momentum
-        '''
+        """
         j = 0
         for i in range(self.no_heavies):
             x = self.pos(i, 0, t)
@@ -545,11 +545,11 @@ class Simulator:
         return j
 
     def calc_energy(self, t):
-        '''
+        """
         Calculates total energy
         :param t: Time step to calculate it at
         :return: Energy
-        '''
+        """
         energy = 0
         # Kinetic energy
         for i in range(self.no_heavies):
@@ -565,11 +565,11 @@ class Simulator:
         return energy
 
     def calc_lin_mom(self, t):
-        '''
+        """
         Calculates liner momentum as a vector
         :param t: Time step to calculate it at
         :return: Liner momentum
-        '''
+        """
         px = 0
         py = 0
         for i in range(self.no_heavies):
@@ -580,14 +580,14 @@ class Simulator:
 
 class Mass:
     def __init__(self, mass, x_init, v_init, colour, galaxy_index):
-        '''
+        """
 
         :param mass: The mass of the object
         :param x_init: The initial position as a vector
         :param v_init: The initial velocity as a vector
         :param colour: The colour (for plotting)
         :param galaxy_index: The galaxy it belongs to (if any) corresponding to the mass index of the central object
-        '''
+        """
         self.colour = colour
         self.mass = mass
         self.x_init = x_init
