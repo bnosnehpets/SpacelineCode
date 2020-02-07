@@ -27,10 +27,11 @@ def diff(inp, t):
     :param t: Current time in simulation
     :return: The time derivative of the input vector
     """
-    r = np.sqrt(inp[0]**2+inp[1]**2)
-    a_0 = -G*earth_mass*inp[0]/(r**3) - G*moon_mass*(inp[0]-earth_moon_dist)/((r-earth_moon_dist)**3)
-    a_1 = -G*earth_mass*inp[1]/(r**3) - G*moon_mass*(inp[1]-earth_moon_dist)/((r-earth_moon_dist)**3)
-    ret = [inp[2],inp[3],a_0, a_1]
+    r_e = np.sqrt(inp[0]**2 + inp[1]**2)                       # distance to earth
+    r_m = np.sqrt((inp[0]-earth_moon_dist)**2 + inp[1]**2)     # distance to moon
+    a_0 = -G*earth_mass*inp[0]/(r_e**3) - G*moon_mass*(inp[0]-earth_moon_dist)/(r_m**3)
+    a_1 = -G*earth_mass*inp[1]/(r_e**3) - G*moon_mass*(inp[1])/(r_m**3)
+    ret = [inp[2], inp[3], a_0, a_1]
     return ret
 
 
@@ -39,7 +40,17 @@ def simulate():
     Core simulation routine, returns the time-integrated solution (trajectory) by calling odeint
     :return: Vector containing position and velocity of each mass at each time
     """
-    init = [1.92E8, 0, 0, 1440.4]            # would be circular orbit if moon wasn't there
-    domain = np.linspace(0, 837700*2, 10000) # set to about 2 orbits
-    solution = odeint(diff, init, domain)
+    init = [1.92E8, 0, 0, 1440.4]             # would be circular orbit if moon wasn't there
+    domain = np.linspace(0, 837700*2, 10000)  # set to about 2 orbits
+    solution = odeint(diff, init, domain, full_output=True)
     return solution
+
+
+solution = simulate()
+x0 = []
+x1 = []
+for i in range(len(solution[0])):
+    x0.append(solution[0][i][0])
+    x1.append(solution[0][i][1])
+plt.plot(x0, x1)
+plt.show()
