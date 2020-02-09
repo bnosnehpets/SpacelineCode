@@ -1,6 +1,6 @@
 #  PROGRAM DESCRIPTION~|| Simulates motion of a breaking spaceline
-#  VERSION~            || v1.1
-#  LAST EDITED~        || 06/02/2020
+#  VERSION~            || v1.2
+#  LAST EDITED~        || 07/02/2020
 
 import numpy as np
 from scipy.integrate import odeint
@@ -10,15 +10,18 @@ import time
 import matplotlib
 
 # PHYSICAL CONSTANTS
+tem = 27.322*24*3600       # Earth-moon rotation period around CoM
+omega = 2*np.pi/tem        # Earth-moon angular velocity around CoM
 earth_moon_dist = 3.84E8   # 3.84E8 m
 earth_mass = 5.972E24      # 5.972E24 kg
 moon_mass = 7.348E22       # 7.348E22 kg
 G = 6.67E-11               # 6.67E-11 N m^2 kg^-2
+com_distance = earth_moon_dist * moon_mass / (earth_mass + moon_mass)
 
 # SIMULATION PARAMETERS
 
 
-# note - to start with - 1 mass in gravitational field of 2 bodies. centrifugal force currently ignored!
+# note - to start with - 1 mass in gravitational field of 2 bodies.
 
 def diff(inp, t):
     """
@@ -27,10 +30,17 @@ def diff(inp, t):
     :param t: Current time in simulation
     :return: The time derivative of the input vector
     """
-    r_e = np.sqrt(inp[0]**2 + inp[1]**2)                       # distance to earth
-    r_m = np.sqrt((inp[0]-earth_moon_dist)**2 + inp[1]**2)     # distance to moon
-    a_0 = -G*earth_mass*inp[0]/(r_e**3) - G*moon_mass*(inp[0]-earth_moon_dist)/(r_m**3)
+    r_e = np.sqrt((inp[0]+com_distance)**2 + inp[1]**2)                     # distance to earth
+    r_m = np.sqrt((inp[0]-earth_moon_dist+com_distance)**2 + inp[1]**2)     # distance to moon
+    # Gravity
+    a_0 = -G*earth_mass*(inp[0]+com_distance)/(r_e**3) - G*moon_mass*(inp[0]-earth_moon_dist+com_distance)/(r_m**3)
     a_1 = -G*earth_mass*inp[1]/(r_e**3) - G*moon_mass*(inp[1])/(r_m**3)
+    # Coriolis
+    a_0 += -2*omega*inp[3]
+    a_1 += 2*omega*inp[2]
+    # Centrifugal
+    a_0 += omega**2*inp[0]
+    a_1 += omega**2*inp[1]
     ret = [inp[2], inp[3], a_0, a_1]
     return ret
 
@@ -40,8 +50,8 @@ def simulate():
     Core simulation routine, returns the time-integrated solution (trajectory) by calling odeint
     :return: Vector containing position and velocity of each mass at each time
     """
-    init = [1.92E8, 0, 0, 1440.4]             # would be circular orbit if moon wasn't there
-    domain = np.linspace(0, 837700*2, 10000)  # set to about 2 orbits
+    init = [1.92E8-com_distance, 0, 0, 1440.4+omega*(1.92E8-com_distance)] # would be circular orbit if moon wasn't there
+    domain = np.linspace(0, 837700*2, 10000)                               # set to about 2 orbits
     solution = odeint(diff, init, domain, full_output=True)
     return solution
 
@@ -52,5 +62,13 @@ x1 = []
 for i in range(len(solution[0])):
     x0.append(solution[0][i][0])
     x1.append(solution[0][i][1])
-plt.plot(x0, x1)
+plt.plot(x0, x1, color='k')
+
+# add earth and moon (centred at com)
+earth = plt.Circle((-com_distance, 0), 6371000, color='b')
+moon = plt.Circle((earth_moon_dist - com_distance, 0), 1731100, color='gray')
+plt.gcf().gca().add_artist(earth)
+plt.gcf().gca().add_artist(moon)
+plt.xlim(-earth_moon_dist*0.75, earth_moon_dist*1.25)
+
 plt.show()
