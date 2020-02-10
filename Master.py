@@ -2,8 +2,6 @@
 #  VERSION~            || v1.3
 #  LAST EDITED~        || 10/02/2020
 
-#note currently doesnt quite work.... need to check diff function
-
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
@@ -22,9 +20,11 @@ moon_radius = 1731100      # 1731100 m
 G = 6.67E-11               # 6.67E-11 N m^2 kg^-2
 com_distance = earth_moon_dist * moon_mass / (earth_mass + moon_mass)
 
+k_over_m = 1E-10
+natural_length = 9.5E7
+
 # SIMULATION PARAMETERS
-mass = 100
-k = 100
+
 
 def init_basic(n, l, i):
     """
@@ -58,16 +58,16 @@ def diff(inp, t):
     r_from_earth = np.copy(positions)
     r_from_earth[::2] += com_distance
     tmp1 = r_from_earth ** 2
-    r_e = np.sqrt(np.repeat([sum(tmp1[i:i+2]) for i in range(0, len(tmp1), 2)], 2))
+    mod_r_e = np.sqrt(np.repeat([sum(tmp1[i:i+2]) for i in range(0, len(tmp1), 2)], 2))
 
     # distance to moon (correctly shaped)
     r_from_moon = np.copy(positions)
     r_from_moon[::2] += com_distance - earth_moon_dist
     tmp1 = r_from_moon ** 2
-    r_m = np.sqrt(np.repeat([sum(tmp1[i:i+2]) for i in range(0, len(tmp1), 2)], 2))
+    mod_r_m = np.sqrt(np.repeat([sum(tmp1[i:i+2]) for i in range(0, len(tmp1), 2)], 2))
 
     # Gravity
-    a = -G*earth_mass*r_from_earth/(r_e**3) - G*moon_mass*r_from_moon/(r_m**3)
+    a = -G*earth_mass*r_from_earth/(mod_r_e**3) - G*moon_mass*r_from_moon/(mod_r_m**3)
 
     # Centrifugal
     a += omega**2 * positions
@@ -77,6 +77,19 @@ def diff(inp, t):
     tmp[::2] = -velocities[1::2]
     tmp[1::2] = velocities[::2]
     a += 2 * omega * tmp
+
+    # Springs
+    # to the right
+    p1 = np.copy(positions)
+    p2 = np.roll(p1, -2)
+    diffs = p2 - p1
+    tmp = diffs**2
+    mod_diffs = np.sqrt(np.repeat([sum(tmp[i:i + 2]) for i in range(0, len(tmp), 2)], 2))
+    extensions = diffs*(1 - np.repeat(natural_length, len(diffs))/mod_diffs)
+    extensions[len(extensions) - 2:] = [0, 0]  # final mass has nothing to the other side (gets rolled to first mass)
+    a += k_over_m * extensions
+    # to the left
+    a += -k_over_m * (np.roll(extensions, 2))
 
     # Combine velocities and accelerations
     ret = np.concatenate([velocities, a])
@@ -94,16 +107,23 @@ def simulate(init, domain):
 
 # simulation
 domain = np.linspace(0, 837700*2, 10000)
-init = [1.92E8-com_distance, 0, 0, 1440.4+omega*(1.92E8-com_distance)]  # would be circular orbit if moon wasn't there
+init = [1.92E8-com_distance, 0, 9.6E7-com_distance, 0,
+        0, 1440.4+omega*(1.92E8-com_distance), 0, 2037+omega*(9.6E7-com_distance)]
+# would be 2 circular orbits if moon wasn't there
 solution = simulate(init, domain)
 
 # plot
 x0 = []
 x1 = []
+X0 = []
+X1 = []
 for i in range(len(solution[0])):
     x0.append(solution[0][i][0])
     x1.append(solution[0][i][1])
-plt.plot(x0, x1, color='k')
+    X0.append(solution[0][i][2])
+    X1.append(solution[0][i][3])
+plt.plot(x0, x1, color='k', linewidth=0.1)
+plt.plot(X0, X1, color='r', linewidth=0.1)
 
 # add earth and moon (centred at com)
 earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
