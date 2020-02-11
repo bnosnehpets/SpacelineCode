@@ -165,8 +165,8 @@ class Simulator:
 
         ani = animation.FuncAnimation(fig1, update, len(data), fargs=(data, l, l1), interval=1, blit=True)
 
-        # plt.show()
-        ani.save('f_' + str(self.timestamp)+'_ani.mp4', writer=writer, dpi=300)
+        plt.show()
+        #ani.save('f_' + str(self.timestamp)+'_ani.mp4', writer=writer, dpi=300)
 
         # clear plot
         plt.clf()

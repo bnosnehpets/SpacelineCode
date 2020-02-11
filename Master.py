@@ -20,7 +20,7 @@ moon_radius = 1731100      # 1731100 m
 G = 6.67E-11               # 6.67E-11 N m^2 kg^-2
 com_distance = earth_moon_dist * moon_mass / (earth_mass + moon_mass)
 
-k_over_m = 1E-10
+k_over_m = 1E-10            # 1E-10
 natural_length = 9.5E7
 
 # SIMULATION PARAMETERS
@@ -41,6 +41,49 @@ def init_basic(n, l, i):
     for j in range(n):
         ret[4*j] = earth_moon_dist - moon_radius - com_distance - i*(earth_moon_dist*l - moon_radius)/(n-1)
         # all others remain 0
+
+
+def animate(sol, title):
+    """
+    Produces an mp4 file, saved in the current directory
+    :param sol: The solution as returned from the odeint function
+    :param title: The title seen in the animation video
+    :return: void
+    """
+    no_masses = len(sol[0][0])//4
+
+    def update(num, data, dot):
+        dot.set_data(data[num, :, :])
+        return dot,
+
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=20, metadata=dict(artist='Me'), bitrate=1800)
+
+    fig = plt.figure()
+
+    a = sol[0][:, :no_masses*2]
+    b = a[:, 0::2]
+    c = a[:, 1::2]
+    d = np.append(b, c, axis=1)
+    data = np.reshape(d, (len(a), 2, no_masses))
+
+    l, = plt.plot([], [], 'k')
+    plt.title(title)
+    # Add earth and moon and set up correctly
+    plt.xlim(-earth_moon_dist*0.75, earth_moon_dist*1.25)
+    plt.ylim(-earth_moon_dist, earth_moon_dist)
+    earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
+    moon = plt.Circle((earth_moon_dist - com_distance, 0), moon_radius, color='gray')
+    plt.gcf().gca().add_artist(earth)
+    plt.gcf().gca().add_artist(moon)
+
+    ani = animation.FuncAnimation(fig, update, len(data), fargs=(data, l), interval=1, blit=True)
+
+    plt.show()
+    #ani.save('ani.mp4', writer=writer, dpi=300)
+
+    # clear plot
+    #plt.clf()
 
 
 def diff(inp, t):
@@ -112,23 +155,26 @@ init = [1.92E8-com_distance, 0, 9.6E7-com_distance, 0,
 # would be 2 circular orbits if moon wasn't there
 solution = simulate(init, domain)
 
-# plot
-x0 = []
-x1 = []
-X0 = []
-X1 = []
-for i in range(len(solution[0])):
-    x0.append(solution[0][i][0])
-    x1.append(solution[0][i][1])
-    X0.append(solution[0][i][2])
-    X1.append(solution[0][i][3])
-plt.plot(x0, x1, color='k', linewidth=0.1)
-plt.plot(X0, X1, color='r', linewidth=0.1)
 
-# add earth and moon (centred at com)
-earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
-moon = plt.Circle((earth_moon_dist - com_distance, 0), moon_radius, color='gray')
-plt.gcf().gca().add_artist(earth)
-plt.gcf().gca().add_artist(moon)
-plt.xlim(-earth_moon_dist*0.75, earth_moon_dist*1.25)
-plt.show()
+animate(solution, ":D")
+
+# plot
+# x0 = []
+# x1 = []
+# X0 = []
+# X1 = []
+# for i in range(len(solution[0])):
+#     x0.append(solution[0][i][0])
+#     x1.append(solution[0][i][1])
+#     X0.append(solution[0][i][2])
+#     X1.append(solution[0][i][3])
+# plt.plot(x0, x1, color='k', linewidth=0.1)
+# plt.plot(X0, X1, color='r', linewidth=0.1)
+#
+# # add earth and moon (centred at com)
+# earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
+# moon = plt.Circle((earth_moon_dist - com_distance, 0), moon_radius, color='gray')
+# plt.gcf().gca().add_artist(earth)
+# plt.gcf().gca().add_artist(moon)
+# plt.xlim(-earth_moon_dist*0.75, earth_moon_dist*1.25)
+# plt.show()
