@@ -1,6 +1,6 @@
 #  PROGRAM DESCRIPTION~|| Simulates motion of a breaking spaceline
 #  VERSION~            || v1.3
-#  LAST EDITED~        || 10/02/2020
+#  LAST EDITED~        || 11/02/2020
 
 import numpy as np
 from scipy.integrate import odeint
@@ -20,27 +20,10 @@ moon_radius = 1731100      # 1731100 m
 G = 6.67E-11               # 6.67E-11 N m^2 kg^-2
 com_distance = earth_moon_dist * moon_mass / (earth_mass + moon_mass)
 
-k_over_m = 1E-10            # 1E-10
+k_over_m = 1E-10            # 1E-10 s^-2
 natural_length = 9.5E7
 
 # SIMULATION PARAMETERS
-
-
-def init_basic(n, l, i):
-    """
-    Sets up input vector of the form [r_0, r_1, ..., r_n, dr_0/dt, dr_1/dt, ..., dr_n/dt], such that each spring is
-    un-extended and the line stretches l % of the way from the moon to the Earth. The line is cut between the ith and
-    i+1th mass
-    Note that in reality the line should be under tension and hence these initial conditions are wrong
-    :param n: number of masses
-    :param l: percentage of way the nth mass is from the moon centre to the Earth centre
-    :param i: the line is cut between the ith and i+1th mass
-    :return: vector as described above
-    """
-    ret = np.zeros(n*4)
-    for j in range(n):
-        ret[4*j] = earth_moon_dist - moon_radius - com_distance - i*(earth_moon_dist*l - moon_radius)/(n-1)
-        # all others remain 0
 
 
 def animate(sol, title):
@@ -56,8 +39,8 @@ def animate(sol, title):
         dot.set_data(data[num, :, :])
         return dot,
 
-    Writer = animation.writers['ffmpeg']
-    writer = Writer(fps=20, metadata=dict(artist='Me'), bitrate=1800)
+    #Writer = animation.writers['ffmpeg']
+    #writer = Writer(fps=20, metadata=dict(artist='Me'), bitrate=1800)
 
     fig = plt.figure()
 
@@ -83,7 +66,7 @@ def animate(sol, title):
     #ani.save('ani.mp4', writer=writer, dpi=300)
 
     # clear plot
-    #plt.clf()
+    plt.clf()
 
 
 def diff(inp, t):
@@ -100,8 +83,8 @@ def diff(inp, t):
     # distance to earth (correctly shaped)
     r_from_earth = np.copy(positions)
     r_from_earth[::2] += com_distance
-    tmp1 = r_from_earth ** 2
-    mod_r_e = np.sqrt(np.repeat([sum(tmp1[i:i+2]) for i in range(0, len(tmp1), 2)], 2))
+    tmp = r_from_earth ** 2
+    mod_r_e = np.sqrt(np.repeat([sum(tmp[i:i+2]) for i in range(0, len(tmp), 2)], 2))
 
     # distance to moon (correctly shaped)
     r_from_moon = np.copy(positions)
@@ -156,9 +139,10 @@ init = [1.92E8-com_distance, 0, 9.6E7-com_distance, 0,
 solution = simulate(init, domain)
 
 
-animate(solution, ":D")
+animate(solution, ":D <3 <3")
 
 # plot
+# note that this should be streamlined (see stack exchange answer) if used again
 # x0 = []
 # x1 = []
 # X0 = []
