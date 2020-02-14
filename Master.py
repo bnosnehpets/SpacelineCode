@@ -1,6 +1,6 @@
 #  PROGRAM DESCRIPTION~|| Simulates motion of a breaking spaceline
-#  VERSION~            || v1.3
-#  LAST EDITED~        || 11/02/2020
+#  VERSION~            || v1.4
+#  LAST EDITED~        || 14/02/2020
 
 import numpy as np
 from scipy.integrate import odeint
@@ -20,10 +20,11 @@ moon_radius = 1731100      # 1731100 m
 G = 6.67E-11               # 6.67E-11 N m^2 kg^-2
 com_distance = earth_moon_dist * moon_mass / (earth_mass + moon_mass)
 
-k_over_m = 1E-10            # 1E-10 s^-2
-natural_length = 9.5E7
-
 # SIMULATION PARAMETERS
+k_over_m = 1E-10*1000000   # 1E-10 s^-2
+starting_percentage = 0.5  # For init
+no_masses = 101
+natural_length = (starting_percentage * earth_moon_dist - moon_radius) / (no_masses - 1)
 
 
 def animate(sol, title):
@@ -33,14 +34,13 @@ def animate(sol, title):
     :param title: The title seen in the animation video
     :return: void
     """
-    no_masses = len(sol[0][0])//4
 
-    def update(num, data, dot):
-        dot.set_data(data[num, :, :])
+    def update(num, dat, dot):
+        dot.set_data(dat[num, :, :])
         return dot,
 
-    #Writer = animation.writers['ffmpeg']
-    #writer = Writer(fps=20, metadata=dict(artist='Me'), bitrate=1800)
+    # Writer = animation.writers['ffmpeg']
+    # writer = Writer(fps=20, metadata=dict(artist='Me'), bitrate=1800)
 
     fig = plt.figure()
 
@@ -50,11 +50,12 @@ def animate(sol, title):
     d = np.append(b, c, axis=1)
     data = np.reshape(d, (len(a), 2, no_masses))
 
-    l, = plt.plot([], [], 'k')
+    l, = plt.plot([], [], 'ko', markersize=0.1)
     plt.title(title)
     # Add earth and moon and set up correctly
     plt.xlim(-earth_moon_dist*0.75, earth_moon_dist*1.25)
     plt.ylim(-earth_moon_dist, earth_moon_dist)
+
     earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
     moon = plt.Circle((earth_moon_dist - com_distance, 0), moon_radius, color='gray')
     plt.gcf().gca().add_artist(earth)
@@ -63,7 +64,7 @@ def animate(sol, title):
     ani = animation.FuncAnimation(fig, update, len(data), fargs=(data, l), interval=1, blit=True)
 
     plt.show()
-    #ani.save('ani.mp4', writer=writer, dpi=300)
+    # ani.save('ani.mp4', writer=writer, dpi=300)
 
     # clear plot
     plt.clf()
@@ -117,48 +118,71 @@ def diff(inp, t):
     # to the left
     a += -k_over_m * (np.roll(extensions, 2))
 
+    # Keep one mass at moon
+    velocities[-1] = 0
+    a[-1] = 0
+
     # Combine velocities and accelerations
     ret = np.concatenate([velocities, a])
     return ret
 
 
-def simulate(init, domain):
+def simulate(initial, dom):
     """
     Core simulation routine, returns the time-integrated solution (trajectory) by calling odeint
     :init: initial conditions vector of the form: [r_0, r_1, ..., r_n, dr_0/dt, dr_1/dt, ..., dr_n/dt]
     :return: Vector containing position and velocity of each mass at each time
     """
-    return odeint(diff, init, domain, full_output=True)
+    return odeint(diff, initial, dom, full_output=True)
 
 
-# simulation
-domain = np.linspace(0, 837700*2, 10000)
-init = [1.92E8-com_distance, 0, 9.6E7-com_distance, 0,
-        0, 1440.4+omega*(1.92E8-com_distance), 0, 2037+omega*(9.6E7-com_distance)]
-# would be 2 circular orbits if moon wasn't there
+def init_conditions():
+    """
+    :return: Vector of initial conditions of form: [r_0, r_1, ..., r_n, dr_0/dt, dr_1/dt, ..., dr_n/dt]
+    """
+    def update(rs):
+        """
+        Performs iteration of calculation to find stable initial conditions
+        :param rs: Array of distance of each mass from moon (from previous iteration)
+        :return: Array of distance of each mass from moon (next iteration)
+        """
+
+        rs_moon = rs + np.repeat(moon_radius, no_m)
+        rs_earth = np.repeat(earth_moon_dist, no_m) - rs_moon
+        rs_com = rs_earth - np.repeat(com_distance, no_m)
+
+        accelerations = G * earth_mass / (rs_earth ** 2) - G * moon_mass / (rs_moon ** 2) + omega ** 2 * rs_com
+        extensions = (1 / k_over_m) * np.flip(np.cumsum(np.flip(accelerations)))
+        a = np.cumsum(np.repeat(natural_length, no_m))
+        rs_updated = a + np.cumsum(extensions)
+        return rs_updated
+
+    #  Initial
+    no_m = no_masses - 1
+    rs_init = np.cumsum(np.repeat(natural_length, no_m))
+    sol = [rs_init]
+
+    # Run iterations
+    r = 20  # TODO: change to check when it is accurate enough
+    for i in range(r):
+        new = update(sol[i])
+        sol = np.reshape(np.append(sol, new), (i + 2, len(sol[0])))
+
+    # Convert into main program coordinate system
+    sol_converted = np.flip(np.repeat(earth_moon_dist - com_distance - moon_radius, no_m) - sol[-1])
+    # Append mass at moon
+    rs_final = np.append(sol_converted, [earth_moon_dist - com_distance - moon_radius])
+    # Intersperse with 0s (y, vx, vy)
+    positions = [0] * 2 * len(rs_final)
+    positions[::2] = rs_final
+    velocities = [0] * 2 * len(rs_final)
+    final = np.append(positions, velocities)
+    return final
+
+
+# MAIN
+domain = np.linspace(0, 837, 10000)   # 837700*2
+init = init_conditions()
 solution = simulate(init, domain)
 
-
 animate(solution, ":D <3 <3")
-
-# plot
-# note that this should be streamlined (see stack exchange answer) if used again
-# x0 = []
-# x1 = []
-# X0 = []
-# X1 = []
-# for i in range(len(solution[0])):
-#     x0.append(solution[0][i][0])
-#     x1.append(solution[0][i][1])
-#     X0.append(solution[0][i][2])
-#     X1.append(solution[0][i][3])
-# plt.plot(x0, x1, color='k', linewidth=0.1)
-# plt.plot(X0, X1, color='r', linewidth=0.1)
-#
-# # add earth and moon (centred at com)
-# earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
-# moon = plt.Circle((earth_moon_dist - com_distance, 0), moon_radius, color='gray')
-# plt.gcf().gca().add_artist(earth)
-# plt.gcf().gca().add_artist(moon)
-# plt.xlim(-earth_moon_dist*0.75, earth_moon_dist*1.25)
-# plt.show()

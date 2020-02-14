@@ -44,11 +44,11 @@ rs_init = np.cumsum(np.repeat(diff, no_masses))
 solution = [rs_init]
 
 # Run iterations
-r = 9
+r = 9  # TODO: change to check when it is accurate enough
 for i in range(r):
     new = update(solution[i])
     solution = np.reshape(np.append(solution, new), (i+2, len(solution[0])))
 
 # Convert into main program coordinate system
 final = np.flip(np.repeat(earth_moon_dist - com_distance - moon_radius, no_masses) - solution[-1])
-print(final)
+print(final) # TODO export to file so that can be read in Master.py
