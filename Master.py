@@ -1,13 +1,12 @@
 #  PROGRAM DESCRIPTION~|| Simulates motion of a breaking spaceline
 #  VERSION~            || v1.4
-#  LAST EDITED~        || 14/02/2020
+#  LAST EDITED~        || 22/02/2020
 
 import numpy as np
 from scipy.integrate import odeint
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
-import matplotlib
 
 # PHYSICAL CONSTANTS
 tem = 27.322*24*3600       # Earth-moon rotation period around CoM
@@ -22,7 +21,7 @@ com_distance = earth_moon_dist * moon_mass / (earth_mass + moon_mass)
 
 # SIMULATION PARAMETERS
 k_over_m = 1E-10*1000000   # 1E-10 s^-2
-starting_percentage = 0.5  # For init
+starting_percentage = 0.75  # For init
 no_masses = 101
 natural_length = (starting_percentage * earth_moon_dist - moon_radius) / (no_masses - 1)
 
@@ -37,6 +36,7 @@ def animate(sol, title):
 
     def update(num, dat, dot):
         dot.set_data(dat[num, :, :])
+
         return dot,
 
     # Writer = animation.writers['ffmpeg']
@@ -50,11 +50,11 @@ def animate(sol, title):
     d = np.append(b, c, axis=1)
     data = np.reshape(d, (len(a), 2, no_masses))
 
-    l, = plt.plot([], [], 'ko', markersize=0.1)
+    l, = plt.plot([], [], 'ko', markersize=2)
     plt.title(title)
     # Add earth and moon and set up correctly
-    plt.xlim(-earth_moon_dist*0.75, earth_moon_dist*1.25)
-    plt.ylim(-earth_moon_dist, earth_moon_dist)
+    plt.xlim(0, 3.9E8)    # -earth_moon_dist*0.75, earth_moon_dist*1.25
+    plt.ylim(-2E6,2E6)    # -earth_moon_dist, earth_moon_dist
 
     earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
     moon = plt.Circle((earth_moon_dist - com_distance, 0), moon_radius, color='gray')
@@ -77,6 +77,7 @@ def diff(inp, t):
     :param t: Current time in simulation
     :return: The time derivative of the input vector
     """
+    print(t)
 
     positions = inp[:len(inp)//2]
     velocities = inp[len(inp)//2:]
@@ -119,8 +120,10 @@ def diff(inp, t):
     a += -k_over_m * (np.roll(extensions, 2))
 
     # Keep one mass at moon
-    velocities[-1] = 0
-    a[-1] = 0
+    velocities[velocities.size-2] = 0
+    a[velocities.size-2] = 0
+    velocities[velocities.size - 1] = 0
+    a[velocities.size - 1] = 0
 
     # Combine velocities and accelerations
     ret = np.concatenate([velocities, a])
@@ -181,8 +184,10 @@ def init_conditions():
 
 
 # MAIN
-domain = np.linspace(0, 837, 10000)   # 837700*2
+domain = np.linspace(0, 60000, 100)   # 837700*2  TODO: THIS IS CRAP NUMBERS
 init = init_conditions()
+init[no_masses*2 - 5] = 0.05E7
+#init[no_masses*3] = 200000
 solution = simulate(init, domain)
 
 animate(solution, ":D <3 <3")
