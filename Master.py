@@ -1,6 +1,11 @@
 #  PROGRAM DESCRIPTION~|| Simulates motion of a breaking spaceline
-#  VERSION~            || v1.4
-#  LAST EDITED~        || 22/02/2020
+#  VERSION~            || v1.5
+#  LAST EDITED~        || 02/03/2020
+
+# TODO check extensions for breaking poss   --DONE
+# TODO don't allow to go through moon or earth    --DONE
+# TODO make sure don't have any compression!
+# TODO change integrator
 
 import numpy as np
 from scipy.integrate import odeint
@@ -9,21 +14,25 @@ import matplotlib.animation as animation
 import time
 
 # PHYSICAL CONSTANTS
-tem = 27.322*24*3600       # Earth-moon rotation period around CoM
-omega = 2*np.pi/tem        # Earth-moon angular velocity around CoM
-earth_moon_dist = 3.84E8   # 3.84E8 m
-earth_mass = 5.972E24      # 5.972E24 kg
-moon_mass = 7.348E22       # 7.348E22 kg
-earth_radius = 6371000     # 6371000 kg
-moon_radius = 1731100      # 1731100 m
-G = 6.67E-11               # 6.67E-11 N m^2 kg^-2
+tem = 27.322*24*3600        # Earth-moon rotation period around CoM
+omega = 2*np.pi/tem         # Earth-moon angular velocity around CoM
+earth_moon_dist = 3.84E8    # 3.84E8 m
+earth_mass = 5.972E24       # 5.972E24 kg
+moon_mass = 7.348E22        # 7.348E22 kg
+earth_radius = 6371000      # 6371000 kg
+moon_radius = 1731100       # 1731100 m
+G = 6.67E-11                # 6.67E-11 N m^2 kg^-2
 com_distance = earth_moon_dist * moon_mass / (earth_mass + moon_mass)
 
 # SIMULATION PARAMETERS
-k_over_m = 1E-10*1000000   # 1E-10 s^-2
+k_over_m = 1E-10*1000000    # 1E-10 s^-2
 starting_percentage = 0.75  # For init
-no_masses = 101
+no_masses = 33              # 101 *********************************************
 natural_length = (starting_percentage * earth_moon_dist - moon_radius) / (no_masses - 1)
+
+breaking_strain = 0.05      # Strain (extension/natural_length) at which a spring breaks
+breakpoints = [50]          # First mass of each separate chain
+breaks = [0] + breakpoints + [no_masses]
 
 
 def animate(sol, title):
@@ -54,7 +63,7 @@ def animate(sol, title):
     plt.title(title)
     # Add earth and moon and set up correctly
     plt.xlim(0, 3.9E8)    # -earth_moon_dist*0.75, earth_moon_dist*1.25
-    plt.ylim(-2E6,2E6)    # -earth_moon_dist, earth_moon_dist
+    plt.ylim(-earth_radius, earth_radius)    # -earth_moon_dist, earth_moon_dist
 
     earth = plt.Circle((-com_distance, 0), earth_radius, color='b')
     moon = plt.Circle((earth_moon_dist - com_distance, 0), moon_radius, color='gray')
@@ -70,11 +79,38 @@ def animate(sol, title):
     plt.clf()
 
 
-def diff(inp, t):
+def update_breaks(mod_diffs, t):
+    """
+    Updates global 'breaks' parameter based on breaking strain
+    :param mod_diffs: distance between masses (1st value is between 0th and 1st mass). Note that each value is repeated
+    due to use in 'update' function. Final two values should be ignored as they are the distance between the final and
+    0th mass.
+    :return None
+    """
+    # TODO need to speed up below??
+    nums = []
+    for j in range(no_masses - 1):
+        if mod_diffs[2*j] > natural_length*(1 + breaking_strain):
+            nums.append(j + 1)
+
+    if t > 55000:
+        print("STOP")
+
+    global breaks
+    breaks = nums + breaks
+    breaks.sort()
+    breaks = list(dict.fromkeys(breaks))  # Removes duplicate values - THIS DOES WORK
+
+    return None
+
+
+def update(inp, t):
     """
     Input function for 'odeint', takes all r_i and dr_i/dt and gives back derivatives
     :param inp: Input vector of the form: [r_0, r_1, ..., r_n, dr_0/dt, dr_1/dt, ..., dr_n/dt]
     :param t: Current time in simulation
+    :param breaks: TODO
+    starts (apart from the final one)
     :return: The time derivative of the input vector
     """
     print(t)
@@ -107,17 +143,26 @@ def diff(inp, t):
     a += 2 * omega * tmp
 
     # Springs
-    # to the right
     p1 = np.copy(positions)
     p2 = np.roll(p1, -2)
     diffs = p2 - p1
-    tmp = diffs**2
+    tmp = diffs ** 2
     mod_diffs = np.sqrt(np.repeat([sum(tmp[i:i + 2]) for i in range(0, len(tmp), 2)], 2))
-    extensions = diffs*(1 - np.repeat(natural_length, len(diffs))/mod_diffs)
-    extensions[len(extensions) - 2:] = [0, 0]  # final mass has nothing to the other side (gets rolled to first mass)
-    a += k_over_m * extensions
-    # to the left
-    a += -k_over_m * (np.roll(extensions, 2))
+    update_breaks(mod_diffs, t)
+
+    #  TODO - next thing
+    for i in range(len(breaks) - 1):
+        # to the right
+        p1 = np.copy(positions[2*breaks[i]:2*breaks[i + 1]])
+        p2 = np.roll(p1, -2)
+        diffs = p2 - p1
+        tmp = diffs**2
+        mod_diffs = np.sqrt(np.repeat([sum(tmp[i:i + 2]) for i in range(0, len(tmp), 2)], 2))
+        extensions = diffs*(1 - np.repeat(natural_length, len(diffs))/mod_diffs)
+        extensions[len(extensions) - 2:] = [0, 0]  # final mass has nothing to the other side (gets rolled to first mass)
+        a[2*breaks[i]:2*breaks[i + 1]] += k_over_m * extensions
+        # to the left
+        a[2*breaks[i]:2*breaks[i + 1]] += -k_over_m * (np.roll(extensions, 2))
 
     # Keep one mass at moon
     velocities[velocities.size-2] = 0
@@ -136,7 +181,7 @@ def simulate(initial, dom):
     :init: initial conditions vector of the form: [r_0, r_1, ..., r_n, dr_0/dt, dr_1/dt, ..., dr_n/dt]
     :return: Vector containing position and velocity of each mass at each time
     """
-    return odeint(diff, initial, dom, full_output=True)
+    return odeint(update, initial, dom, full_output=True)
 
 
 def init_conditions():
@@ -184,9 +229,9 @@ def init_conditions():
 
 
 # MAIN
-domain = np.linspace(0, 60000, 100)   # 837700*2  TODO: THIS IS CRAP NUMBERS
-init = init_conditions()
-init[no_masses*2 - 5] = 0.05E7
+domain = np.linspace(0, 60000, 1000)   # 837700*2  TODO: THIS IS CRAP NUMBERS
+init = init_conditions()   # TESTER: np.concatenate([[3*earth_radius, -0.4*earth_radius], init_conditions(), [0, 0]])
+#init[no_masses*2 - 5] = 0.05E7
 #init[no_masses*3] = 200000
 solution = simulate(init, domain)
 
